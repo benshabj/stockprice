@@ -28,7 +28,7 @@ if "asset" not in st.session_state:
 
 asset = st.session_state["asset"]
 
-st.title(f"📈 {asset} – Next 7 Days Prediction")
+st.title(f" {asset} – Next 7 Days Prediction")
 
 # ---------------- PARAMETERS ----------------
 SEQUENCE_LEN = 60
@@ -38,7 +38,6 @@ EPOCHS = 10
 # ---------------- FUNCTIONS ----------------
 def prepare_data(symbol):
     df = yf.download(symbol, period="5y", progress=False)
-
     df = df[['Close']].reset_index()
 
     scaler = MinMaxScaler()
@@ -88,13 +87,12 @@ with st.spinner("Training model and predicting..."):
         future_scaled.reshape(-1, 1)
     ).flatten()
 
-    # -------- FIX FOR AMBIGUOUS SERIES ERROR --------
-    last_price = df['Close'].iloc[-1].item()
-    future_last_price = future_prices[-1].item()
+    last_price = float(df['Close'].iloc[-1])
+    future_last_price = float(future_prices[-1])
 
     trend = "UP 📈" if future_last_price > last_price else "DOWN 📉"
 
-    # -------- FUTURE DATES --------
+    # -------- FUTURE DATES WITH DAY NAME --------
     future_dates = pd.date_range(
         start=df['Date'].iloc[-1] + pd.Timedelta(days=1),
         periods=FORECAST_DAYS,
@@ -102,45 +100,78 @@ with st.spinner("Training model and predicting..."):
     )
 
     future_df = pd.DataFrame({
-        "Date": future_dates,
-        "Predicted Close": future_prices
+        "Date": future_dates.strftime("%a, %d %b %Y"),
+        "Predicted Close ($)": future_prices
     })
 
-# ---------------- OUTPUT ----------------
-st.subheader("📋 Predicted Prices")
-st.dataframe(future_df.round(2), use_container_width=True)
+# ---------------- TABLE OUTPUT ----------------
+display_df = future_df.copy()
+display_df["Predicted Close ($)"] = display_df["Predicted Close ($)"].apply(
+    lambda x: f"${x:,.2f}"
+)
 
-st.subheader("📈 Prediction Chart")
+st.subheader("Predicted Prices")
+st.dataframe(display_df, use_container_width=True)
+
+# ---------------- CHART ----------------
+st.subheader(" Prediction Chart")
 fig, ax = plt.subplots(figsize=(10, 5))
+
 ax.plot(df['Date'].tail(252), df['Close'].tail(252), label="Historical")
 ax.plot(
-    future_df['Date'],
-    future_df['Predicted Close'],
+    future_dates,
+    future_prices,
     marker="o",
     linestyle="--",
     label="Prediction"
 )
+
 ax.axvline(df['Date'].iloc[-1], linestyle=":", color="gray")
+ax.set_xlabel("Date")
+ax.set_ylabel("Price (USD)")
 ax.legend()
 ax.grid(True)
+
 st.pyplot(fig)
 
-st.subheader("📊 Accuracy")
+# ---------------- ACCURACY ----------------
+st.subheader("Accuracy")
 col1, col2 = st.columns(2)
 col1.metric("MAE", f"{mae:.4f}")
 col2.metric("RMSE", f"{rmse:.4f}")
 
-st.success(f"💡 Expected Trend: **{trend}**")
+st.success(f" Expected Trend: **{trend}**")
 
 # ---------------- NAVIGATION ----------------
 col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("⬅ Go Back"):
+    if st.button("Go Back"):
         st.switch_page("app.py")
 
 with col2:
-    if st.button("📊 Market Comparison"):
+    if st.button("Market Comparison"):
         st.switch_page("pages/trends.py")
 
-st.caption("⚠️ Educational purpose only. Not financial advice.")
+# ---------------- FOOTER (BOTTOM + CENTER) ----------------
+st.markdown(
+    """
+    <style>
+    .bottom-caption {
+        position: fixed;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        color: gray;
+        font-size: 13px;
+        text-align: center;
+        z-index: 100;
+    }
+    </style>
+
+    <div class="bottom-caption">
+        ⚠️ Disclaimer: This prediction is for educational purposes only and not financial advice.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
