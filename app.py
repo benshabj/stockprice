@@ -45,4 +45,4 @@ with center:
         st.session_state["asset"] = asset
 
         # Go to prediction page
-        st.switch_page("predict.py")
+        st.switch_page("pages/predict.py")
