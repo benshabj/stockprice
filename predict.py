@@ -141,6 +141,6 @@ with col1:
 
 with col2:
     if st.button("📊 Market Comparison"):
-        st.switch_page("pages/trends.py")
+        st.switch_page("trends.py")
 
 st.caption("⚠️ Educational purpose only. Not financial advice.")
